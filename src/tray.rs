@@ -1,5 +1,7 @@
 //! Ícone na bandeja e loop de mensagens do Windows (roda na thread principal).
 
+use std::sync::Arc;
+
 use tray_icon::{
     Icon, TrayIconBuilder,
     menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
@@ -11,7 +13,7 @@ use windows::{
         UI::{
             Shell::ShellExecuteW,
             WindowsAndMessaging::{
-                DispatchMessageW, GetMessageW, MSG, PostThreadMessageW, SW_SHOWNORMAL, TranslateMessage, WM_QUIT,
+                DispatchMessageW, GetMessageW, MSG, PostThreadMessageW, SW_SHOWNORMAL, TranslateMessage, WM_APP,
             },
         },
     },
@@ -22,26 +24,54 @@ use crate::{
     autostart,
     config::Lang,
     i18n::{Text, text},
+    state::AppState,
 };
 
 const ICON_SIZE: u32 = 32;
+/// Mensagem de thread postada quando o idioma muda na página de config.
+const WM_APP_LANG_CHANGED: u32 = WM_APP + 1;
 
-pub fn run(lang: Lang, port: u16) {
+struct Items {
+    open: MenuItem,
+    copy: MenuItem,
+    startup: CheckMenuItem,
+    quit: MenuItem,
+}
+
+impl Items {
+    fn new(lang: Lang) -> Self {
+        let items = Self {
+            open: MenuItem::new("", true, None),
+            copy: MenuItem::new("", true, None),
+            startup: CheckMenuItem::new("", true, autostart::is_enabled(), None),
+            quit: MenuItem::new("", true, None),
+        };
+        items.set_labels(lang);
+        items
+    }
+
+    fn set_labels(&self, lang: Lang) {
+        self.open.set_text(text(lang, Text::OpenSettings));
+        self.copy.set_text(text(lang, Text::CopyUrl));
+        self.startup.set_text(text(lang, Text::StartWithWindows));
+        self.quit.set_text(text(lang, Text::Quit));
+    }
+}
+
+pub fn run(state: Arc<AppState>) {
+    let port = state.port;
     let widget_url = format!("http://localhost:{port}/");
     let config_url = format!("http://localhost:{port}/config");
 
-    let open = MenuItem::new(text(lang, Text::OpenSettings), true, None);
-    let copy = MenuItem::new(text(lang, Text::CopyUrl), true, None);
-    let startup = CheckMenuItem::new(text(lang, Text::StartWithWindows), true, autostart::is_enabled(), None);
-    let quit = MenuItem::new(text(lang, Text::Quit), true, None);
+    let items = Items::new(state.config().lang);
     let menu = Menu::new();
     menu.append_items(&[
-        &open,
-        &copy,
+        &items.open,
+        &items.copy,
         &PredefinedMenuItem::separator(),
-        &startup,
+        &items.startup,
         &PredefinedMenuItem::separator(),
-        &quit,
+        &items.quit,
     ])
     .expect("failed to build tray menu");
 
@@ -52,30 +82,40 @@ pub fn run(lang: Lang, port: u16) {
         .build()
         .expect("failed to create tray icon");
 
+    // Os itens do menu não são Send: quem muda o idioma só acorda esta thread.
     // SAFETY: apenas lê o id da thread atual.
     let main_thread = unsafe { GetCurrentThreadId() };
-    let (open_id, copy_id, startup_id, quit_id) =
-        (open.id().clone(), copy.id().clone(), startup.id().clone(), quit.id().clone());
-    MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
-        if event.id == open_id {
-            open_in_browser(&config_url);
-        } else if event.id == copy_id {
-            let _ = clipboard_win::set_clipboard_string(&widget_url);
-        } else if event.id == startup_id {
-            // O CheckMenuItem já alterna o visto sozinho; aqui só espelha no registro.
-            let _ = autostart::set_enabled(!autostart::is_enabled());
-        } else if event.id == quit_id {
-            // SAFETY: posta WM_QUIT na fila da thread principal, que encerra o loop abaixo.
-            let _ = unsafe { PostThreadMessageW(main_thread, WM_QUIT, WPARAM(0), LPARAM(0)) };
-        }
-    }));
+    state.on_lang_change(move || {
+        // SAFETY: posta uma mensagem sem ponteiros na fila da thread principal.
+        let _ = unsafe { PostThreadMessageW(main_thread, WM_APP_LANG_CHANGED, WPARAM(0), LPARAM(0)) };
+    });
 
+    let menu_events = MenuEvent::receiver();
     let mut msg = MSG::default();
     // SAFETY: loop de mensagens padrão do Win32 na thread que criou o ícone.
-    unsafe {
-        while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+    while unsafe { GetMessageW(&mut msg, None, 0, 0) }.0 > 0 {
+        if msg.message == WM_APP_LANG_CHANGED {
+            items.set_labels(state.config().lang);
+            continue;
+        }
+        // SAFETY: `msg` veio de GetMessageW nesta mesma thread.
+        unsafe {
             let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
+        }
+        while let Ok(event) = menu_events.try_recv() {
+            if event.id == *items.open.id() {
+                open_in_browser(&config_url);
+            } else if event.id == *items.copy.id() {
+                let _ = clipboard_win::set_clipboard_string(&widget_url);
+            } else if event.id == *items.startup.id() {
+                // O CheckMenuItem já alternou o visto; se o registro falhar, volta ao estado real.
+                if autostart::set_enabled(items.startup.is_checked()).is_err() {
+                    items.startup.set_checked(autostart::is_enabled());
+                }
+            } else if event.id == *items.quit.id() {
+                return;
+            }
         }
     }
 }

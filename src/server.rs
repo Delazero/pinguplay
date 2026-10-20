@@ -244,6 +244,21 @@ mod tests {
         assert_eq!(Config::load(&dir.0.join("config.toml")).theme, "mint");
     }
 
+    #[test]
+    fn language_change_notifies_listener() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let (state, _dir) = setup("lang");
+        let calls = Arc::new(AtomicUsize::new(0));
+        let counter = calls.clone();
+        state.on_lang_change(move || {
+            counter.fetch_add(1, Ordering::SeqCst);
+        });
+        state.apply_config(Config { theme: "mint".into(), ..Config::default() }).unwrap();
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        state.apply_config(Config { lang: crate::config::Lang::En, ..Config::default() }).unwrap();
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+    }
+
     #[tokio::test]
     async fn config_pointing_to_missing_animation_is_reset() {
         let (state, _dir) = setup("missing");

@@ -237,7 +237,7 @@
   var MAX_UPLOAD = 10 * 1024 * 1024;
 
   var $ = function (id) { return document.getElementById(id); };
-  var cfg = null, presets = [], animations = [], saveTimer = 0;
+  var cfg = null, presets = [], animations = [], saveTimer = 0, saveSeq = 0;
 
   function t(key) { return TEXT[cfg ? cfg.lang : "pt"][key]; }
   function setStatus(key) { $("status").textContent = key ? t(key) : ""; }
@@ -245,7 +245,6 @@
   function translate() {
     document.documentElement.lang = cfg.lang;
     document.querySelectorAll("[data-t]").forEach(function (el) { el.textContent = t(el.getAttribute("data-t")); });
-    $("step3").textContent = t("step3").replace("{w}", cfg.width + 16);
   }
 
   function pressed(groupId, value) {
@@ -294,10 +293,22 @@
     inner.style.height = (h * scale) + "px";
   }
 
-  function render() {
+  // Montagem completa: só ao carregar, trocar idioma ou mudar a lista de animações.
+  function rebuild() {
     translate();
     buildThemes();
     buildAnimations();
+    render();
+  }
+
+  // Atualização barata dos valores, chamada a cada input (ex.: arrastar slider).
+  function render() {
+    var custom = $("themes").querySelector('[data-value="custom"]');
+    custom.style.setProperty("--sw-bg", cfg.custom_bg);
+    custom.style.setProperty("--sw-text", cfg.custom_text);
+    custom.style.setProperty("--sw-accent", cfg.custom_accent);
+    $("animation").value = cfg.animation;
+    $("step3").textContent = t("step3").replace("{w}", cfg.width + 16);
     pressed("themes", cfg.theme);
     pressed("source", cfg.source);
     pressed("lang", cfg.lang);
@@ -318,23 +329,33 @@
     cfg = view.config;
     presets = view.presets;
     animations = view.animations;
-    render();
+    rebuild();
   }
 
   function save() {
     setStatus("saving");
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
+      var seq = ++saveSeq;
       fetch("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) })
         .then(function (r) { if (!r.ok) throw r; return r.json(); })
-        .then(function (view) { setView(view); setStatus("saved"); })
+        .then(function (view) {
+          // Resposta antiga com o usuário ainda mexendo: não sobrescreve o que ele já mudou.
+          if (seq !== saveSeq) return;
+          var listChanged = view.animations.join("\n") !== animations.join("\n");
+          cfg = view.config;
+          animations = view.animations;
+          if (listChanged) buildAnimations();
+          render();
+          setStatus("saved");
+        })
         .catch(function () { setStatus("error"); });
     }, 250);
   }
 
   function update(patch) {
     Object.keys(patch).forEach(function (k) { cfg[k] = patch[k]; });
-    render();
+    if ("lang" in patch) rebuild(); else render();
     save();
   }
 

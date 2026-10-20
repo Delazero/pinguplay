@@ -88,13 +88,37 @@ impl Config {
         self
     }
 
-    /// Lê o `config.toml`. Arquivo ausente ou inválido vira config padrão.
+    /// Lê o `config.toml`. Arquivo ausente ou ilegível vira config padrão;
+    /// um campo inválido volta só ele ao padrão.
     pub fn load(path: &Path) -> Config {
         fs::read_to_string(path)
-            .ok()
-            .and_then(|text| toml::from_str::<Config>(&text).ok())
+            .map(|text| Config::from_toml_lenient(&text))
             .unwrap_or_default()
             .sanitized()
+    }
+
+    fn from_toml_lenient(text: &str) -> Config {
+        let Ok(file) = text.parse::<toml::Table>() else {
+            return Config::default();
+        };
+        let Some(mut merged) = toml::Value::try_from(Config::default())
+            .ok()
+            .and_then(|v| v.as_table().cloned())
+        else {
+            return Config::default();
+        };
+        // Aplica campo a campo e descarta o que não desserializa (ex.: lang = "es").
+        for (key, value) in file {
+            if !merged.contains_key(&key) {
+                continue;
+            }
+            let mut candidate = merged.clone();
+            candidate.insert(key, value);
+            if toml::Value::Table(candidate.clone()).try_into::<Config>().is_ok() {
+                merged = candidate;
+            }
+        }
+        toml::Value::Table(merged).try_into().unwrap_or_default()
     }
 
     pub fn save(&self, path: &Path) -> io::Result<()> {
@@ -162,6 +186,15 @@ mod tests {
         config.save(&path).unwrap();
         assert_eq!(Config::load(&path), config);
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn one_invalid_field_keeps_the_others() {
+        let config = Config::from_toml_lenient("lang = \"es\"\ntheme = \"mint\"\nwidth = \"wide\"\nbg_opacity = 40");
+        assert_eq!(config.lang, Lang::Pt);
+        assert_eq!(config.theme, "mint");
+        assert_eq!(config.width, Config::default().width);
+        assert_eq!(config.bg_opacity, 40);
     }
 
     #[test]

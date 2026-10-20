@@ -2,7 +2,7 @@ use std::{
     fs, io,
     path::PathBuf,
     sync::{
-        RwLock,
+        OnceLock, RwLock,
         atomic::{AtomicU64, Ordering},
     },
 };
@@ -45,6 +45,7 @@ pub struct AppState {
     pub cover: RwLock<Option<Cover>>,
     config: RwLock<Config>,
     anim_rev: AtomicU64,
+    lang_listener: OnceLock<Box<dyn Fn() + Send + Sync>>,
 }
 
 impl AppState {
@@ -59,7 +60,13 @@ impl AppState {
             cover: RwLock::new(None),
             config: RwLock::new(config),
             anim_rev: AtomicU64::new(1),
+            lang_listener: OnceLock::new(),
         }
+    }
+
+    /// Avisado quando o idioma muda (o tray atualiza os textos do menu).
+    pub fn on_lang_change(&self, listener: impl Fn() + Send + Sync + 'static) {
+        let _ = self.lang_listener.set(Box::new(listener));
     }
 
     pub fn config(&self) -> Config {
@@ -73,9 +80,9 @@ impl AppState {
             new.animation.clear();
         }
         new.save(&self.config_path)?;
-        let changed_animation = {
+        let (changed_animation, changed_lang) = {
             let mut current = self.config.write().unwrap();
-            let changed = current.animation != new.animation;
+            let changed = (current.animation != new.animation, current.lang != new.lang);
             *current = new.clone();
             changed
         };
@@ -83,6 +90,9 @@ impl AppState {
             self.anim_rev.fetch_add(1, Ordering::Relaxed);
         }
         self.publish_style();
+        if changed_lang && let Some(listener) = self.lang_listener.get() {
+            listener();
+        }
         Ok(new)
     }
 

@@ -66,5 +66,5 @@ fn main() {
         })
         .expect("failed to spawn http thread");
 
-    tray::run(lang, port);
+    tray::run(state);
 }

@@ -8,6 +8,8 @@ use crate::config::Source;
 const WINDOWS_TO_UNIX_EPOCH_100NS: i64 = 116_444_736_000_000_000;
 /// Desvio de posição que conta como seek (e não só atraso de polling).
 const SEEK_TOLERANCE_MS: i64 = 2_000;
+/// Anúncios de áudio do Spotify duram até ~60 s.
+const MAX_AD_MS: u64 = 65_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
@@ -71,6 +73,7 @@ pub fn pick_session(sessions: &[SessionInfo], source: Source) -> Option<usize> {
 }
 
 /// O Spotify free anuncia propagandas como faixas sem artista ou com título "Advertisement".
+/// Sem artista só conta como anúncio se for curto: arquivo local sem tag é música normal.
 pub fn is_ad(sample: &Sample) -> bool {
     if !is_spotify(&sample.app_id) {
         return false;
@@ -79,7 +82,7 @@ pub fn is_ad(sample: &Sample) -> bool {
     title.is_empty()
         || title.eq_ignore_ascii_case("advertisement")
         || title.eq_ignore_ascii_case("spotify")
-        || sample.artist.trim().is_empty()
+        || (sample.artist.trim().is_empty() && sample.duration_ms <= MAX_AD_MS)
 }
 
 pub fn to_now_playing(sample: Option<&Sample>, cover: u64) -> NowPlaying {
@@ -196,9 +199,17 @@ mod tests {
     fn spotify_ads_are_detected() {
         assert!(is_ad(&sample("Advertisement", "")));
         assert!(is_ad(&sample("Spotify", "")));
-        assert!(is_ad(&sample("Buy stuff", "")));
         assert!(is_ad(&sample("", "Someone")));
+        let short = Sample { duration_ms: 30_000, ..sample("Buy stuff", "") };
+        assert!(is_ad(&short));
+        let unknown_length = Sample { duration_ms: 0, ..sample("Buy stuff", "") };
+        assert!(is_ad(&unknown_length));
         assert!(!is_ad(&sample("Song", "Artist")));
+    }
+
+    #[test]
+    fn untagged_local_files_are_not_ads() {
+        assert!(!is_ad(&sample("my demo track", "")));
     }
 
     #[test]
