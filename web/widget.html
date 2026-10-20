@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<title>pinguplay</title>
+<style>
+  @font-face {
+    font-family: "Nunito";
+    src: url("/fonts/nunito.woff2") format("woff2");
+    font-weight: 200 1000;
+  }
+  :root {
+    --w: 420px;
+    --bg: rgba(255, 214, 231, 1);
+    --bg-solid: #ffd6e7;
+    --text: #5a2a3f;
+    --accent: #ff6fa5;
+    --track: rgba(90, 42, 63, .15);
+    --shadow: 0 4px 14px rgba(0, 0, 0, .12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  body { padding: 8px; }
+
+  #card {
+    width: var(--w);
+    height: 80px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 26px 8px 8px;
+    border-radius: 40px;
+    background: var(--bg);
+    color: var(--text);
+    box-shadow: var(--shadow);
+    font-family: "Nunito", "Segoe UI", sans-serif;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity .4s ease, transform .4s ease, background-color .3s, color .3s;
+  }
+  #card.visible { opacity: 1; transform: none; }
+
+  .anim { flex: none; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; }
+  .anim img, .anim canvas { width: 100%; height: 100%; object-fit: contain; }
+  #still, #card.frozen #anim { display: none; }
+  #card.frozen #still { display: block; }
+
+  #cover {
+    flex: none;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--accent) center / cover no-repeat;
+    color: var(--bg-solid);
+    font-size: 24px;
+    line-height: 52px;
+    text-align: center;
+    transition: opacity .18s;
+  }
+
+  .info { flex: 1; min-width: 0; transition: opacity .18s; }
+  #card.swap .info, #card.swap #cover { opacity: 0; }
+
+  .line { overflow: hidden; white-space: nowrap; }
+  .line span { display: inline-block; }
+  .line.scroll {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 14px), transparent);
+  }
+  .line.scroll span { animation: marquee var(--d, 10s) linear infinite; }
+  @keyframes marquee { to { transform: translateX(-50%); } }
+
+  #title { font-size: 17px; font-weight: 800; line-height: 1.3; }
+  .artist-line { opacity: .72; }
+  #artist { font-size: 14px; font-weight: 600; line-height: 1.3; }
+
+  .bar { height: 4px; margin-top: 6px; border-radius: 2px; background: var(--track); overflow: hidden; }
+  #fill { height: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); }
+
+  #card.ad #cover, #card.ad .artist-line, #card.ad .bar { display: none; }
+</style>
+</head>
+<body>
+<div id="card">
+  <div class="anim"><img id="anim" alt=""><canvas id="still"></canvas></div>
+  <div id="cover"></div>
+  <div class="info">
+    <div class="line"><span id="title"></span></div>
+    <div class="line artist-line"><span id="artist"></span></div>
+    <div class="bar"><div id="fill"></div></div>
+  </div>
+</div>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var card = $("card"), anim = $("anim"), still = $("still"), cover = $("cover"), fill = $("fill");
+  var titleEl = $("title"), artistEl = $("artist");
+  var preview = /[?&]preview/.test(location.search);
+  var GAP = "   ";
+  var SCROLL_PX_PER_S = 35;
+  var TEXT = {
+    pt: { ad: "Intervalo ♪", demoTitle: "Nome de uma música bem comprida pra testar", demoArtist: "Artista" },
+    en: { ad: "Break ♪", demoTitle: "A pretty long song name to test scrolling", demoArtist: "Artist" }
+  };
+  var lang = "pt", animRev = 0, textKey = null, coverId = -1, swapTimer = 0;
+  var lastNow = { kind: "hidden" };
+
+  function rgb(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(",");
+  }
+
+  function applyStyle(s) {
+    var a = s.bg_opacity / 100, root = document.documentElement.style;
+    root.setProperty("--w", s.width + "px");
+    root.setProperty("--bg", "rgba(" + rgb(s.bg) + "," + a + ")");
+    root.setProperty("--bg-solid", s.bg);
+    root.setProperty("--text", s.text);
+    root.setProperty("--accent", s.accent);
+    root.setProperty("--track", "rgba(" + rgb(s.text) + ",.15)");
+    root.setProperty("--shadow", "0 4px 14px rgba(0,0,0," + (0.12 * a) + ")");
+    lang = TEXT[s.lang] ? s.lang : "pt";
+    if (s.anim !== animRev) {
+      animRev = s.anim;
+      anim.src = "/animation?v=" + animRev;
+    }
+    textKey = null;
+    render(lastNow);
+  }
+
+  // Guarda o primeiro frame num canvas para "congelar" o GIF quando pausa.
+  anim.onload = function () {
+    still.width = anim.naturalWidth;
+    still.height = anim.naturalHeight;
+    still.getContext("2d").drawImage(anim, 0, 0);
+  };
+
+  function measure(el) {
+    var line = el.parentNode, text = el.getAttribute("data-text") || "";
+    line.classList.remove("scroll");
+    el.textContent = text;
+    if (el.offsetWidth > line.clientWidth) {
+      el.textContent = text + GAP + text + GAP;
+      el.style.setProperty("--d", (el.offsetWidth / 2 / SCROLL_PX_PER_S) + "s");
+      line.classList.add("scroll");
+    }
+  }
+
+  function setText(el, text) {
+    el.setAttribute("data-text", text);
+    measure(el);
+  }
+
+  function setCover(id) {
+    if (id === coverId) return;
+    coverId = id;
+    cover.style.backgroundImage = id ? "url(/cover?v=" + id + ")" : "none";
+    cover.textContent = id ? "" : "♪";
+  }
+
+  // A barra anda sozinha via transition CSS: nenhum JS por frame.
+  function setProgress(pos, dur, playing) {
+    var p = dur ? Math.min(pos / dur, 1) : 0;
+    fill.style.transition = "none";
+    fill.style.transform = "scaleX(" + p + ")";
+    if (playing && dur && p < 1) {
+      void fill.offsetWidth;
+      fill.style.transition = "transform " + (dur - pos) + "ms linear";
+      fill.style.transform = "scaleX(1)";
+    }
+  }
+
+  function demo() {
+    return { kind: "track", title: TEXT[lang].demoTitle, artist: TEXT[lang].demoArtist,
+             playing: true, position_ms: 42000, duration_ms: 180000, cover: 0 };
+  }
+
+  function render(now) {
+    lastNow = now;
+    if (now.kind === "hidden" && preview) now = demo();
+    if (now.kind === "hidden") {
+      card.classList.remove("visible");
+      return;
+    }
+    var isAd = now.kind === "ad";
+    var title = isAd ? TEXT[lang].ad : now.title;
+    var artist = isAd ? "" : now.artist;
+    var key = title + "\n" + artist;
+    var wasVisible = card.classList.contains("visible");
+
+    card.classList.add("visible");
+    card.classList.toggle("ad", isAd);
+    card.classList.toggle("frozen", isAd || !now.playing);
+
+    if (key !== textKey) {
+      var first = textKey === null || !wasVisible;
+      textKey = key;
+      var apply = function () {
+        setText(titleEl, title);
+        setText(artistEl, artist);
+        setCover(isAd ? 0 : now.cover);
+        card.classList.remove("swap");
+      };
+      clearTimeout(swapTimer);
+      if (first) apply();
+      else { card.classList.add("swap"); swapTimer = setTimeout(apply, 180); }
+    } else if (!isAd) {
+      setCover(now.cover);
+    }
+    if (!isAd) {
+      // Re-render (ex.: troca de estilo) usa o evento antigo: desconta o tempo passado.
+      var elapsed = now.playing && now.at ? Date.now() - now.at : 0;
+      setProgress(now.position_ms + elapsed, now.duration_ms, now.playing);
+    }
+  }
+
+  function connect() {
+    var es = new EventSource("/events");
+    es.addEventListener("style", function (e) { applyStyle(JSON.parse(e.data)); });
+    es.addEventListener("now", function (e) {
+      var now = JSON.parse(e.data);
+      now.at = Date.now();
+      render(now);
+    });
+    // App fechado: esconde. O EventSource reconecta sozinho quando ele voltar.
+    es.onerror = function () { textKey = null; render({ kind: "hidden" }); };
+  }
+
+  if (document.fonts) document.fonts.ready.then(function () { measure(titleEl); measure(artistEl); });
+  connect();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pinguplay</title>
+<style>
+  @font-face {
+    font-family: "Nunito";
+    src: url("/fonts/nunito.woff2") format("woff2");
+    font-weight: 200 1000;
+  }
+  :root {
+    --page: #fff5f9;
+    --panel: #ffffff;
+    --ink: #3a2530;
+    --muted: #8a7280;
+    --line: #f0dbe4;
+    --brand: #e8508c;
+    --brand-ink: #ffffff;
+    --check-a: #f4eef1;
+    --check-b: #e6dde2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #17141a;
+      --panel: #221e26;
+      --ink: #f3eef5;
+      --muted: #a99db0;
+      --line: #383040;
+      --brand: #ff7aaf;
+      --brand-ink: #2a0f1c;
+      --check-a: #2b2630;
+      --check-b: #221e26;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: "Nunito", "Segoe UI", sans-serif;
+    font-size: 15px;
+  }
+  main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 28px 16px 56px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 780px) { main { grid-template-columns: minmax(0, 1fr); } }
+
+  header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 30px; font-weight: 900; letter-spacing: -.5px; }
+  h1 small { font-size: 15px; font-weight: 700; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
+  h2 { margin: 0 0 14px; font-size: 17px; font-weight: 900; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 22px; }
+  .field + .field { margin-top: 22px; }
+  .label { display: block; font-weight: 800; margin-bottom: 9px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 7px 0 0; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch {
+    font: inherit; font-weight: 800; cursor: pointer;
+    padding: 8px 15px; border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, .12);
+    background: var(--sw-bg); color: var(--sw-text);
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .swatch::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--sw-accent); }
+  .swatch[aria-pressed="true"] { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+  .colors { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+  .colors label { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+  input[type="color"] { width: 38px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: none; cursor: pointer; }
+
+  .range { display: flex; align-items: center; gap: 12px; }
+  .range input { flex: 1; accent-color: var(--brand); }
+  .range output { min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--muted); }
+
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+  .seg button { font: inherit; font-weight: 800; border: 0; background: transparent; color: var(--ink); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--brand); color: var(--brand-ink); }
+
+  select, input[type="number"], input[type="text"] {
+    font: inherit; color: var(--ink); background: var(--page);
+    border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; min-width: 0;
+  }
+  .btn {
+    font: inherit; font-weight: 800; cursor: pointer;
+    border: 0; border-radius: 999px; padding: 9px 16px;
+    background: var(--brand); color: var(--brand-ink);
+  }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+  .side { position: sticky; top: 16px; display: grid; gap: 16px; }
+  .stage {
+    border-radius: 16px; padding: 14px; overflow: hidden;
+    background: repeating-conic-gradient(var(--check-a) 0 25%, var(--check-b) 0 50%) 0 0 / 20px 20px;
+  }
+  .stage-inner { transform-origin: left top; }
+  iframe { border: 0; display: block; background: transparent; }
+  .url { display: flex; gap: 8px; }
+  .url input { flex: 1; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  ol { margin: 0; padding-left: 20px; line-height: 1.7; }
+  .status { font-size: 13px; font-weight: 700; color: var(--muted); min-height: 18px; }
+  .warn { color: var(--brand); font-weight: 700; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>pinguplay <small data-t="subtitle"></small></h1>
+    <div class="seg" id="lang" role="group" aria-label="Idioma / Language">
+      <button type="button" data-value="pt">Português</button>
+      <button type="button" data-value="en">English</button>
+    </div>
+  </header>
+
+  <section class="panel" aria-labelledby="look-title">
+    <h2 id="look-title" data-t="look"></h2>
+
+    <div class="field">
+      <span class="label" data-t="theme"></span>
+      <div class="swatches" id="themes"></div>
+      <div class="colors" id="custom" hidden>
+        <label><input type="color" id="custom_bg"> <span data-t="bg"></span></label>
+        <label><input type="color" id="custom_text"> <span data-t="text"></span></label>
+        <label><input type="color" id="custom_accent"> <span data-t="accent"></span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="bg_opacity" data-t="opacity"></label>
+      <div class="range"><input type="range" id="bg_opacity" min="0" max="100" step="5"><output id="bg_opacity_out"></output></div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="width" data-t="width"></label>
+      <div class="range"><input type="range" id="width" min="260" max="800" step="10"><output id="width_out"></output></div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="animation" data-t="animation"></label>
+      <div class="row">
+        <select id="animation"></select>
+        <button type="button" class="btn ghost" id="upload_btn" data-t="upload"></button>
+        <input type="file" id="upload" accept="image/gif,image/webp,image/png,image/apng,.gif,.webp,.png,.apng" hidden>
+      </div>
+      <p class="hint" data-t="animationHint"></p>
+    </div>
+
+    <div class="field">
+      <span class="label" data-t="source"></span>
+      <div class="seg" id="source" role="group">
+        <button type="button" data-value="spotify">Spotify</button>
+        <button type="button" data-value="any" data-t="anyPlayer"></button>
+      </div>
+      <p class="hint" data-t="sourceHint"></p>
+    </div>
+
+    <div class="field">
+      <label class="label" for="port" data-t="port"></label>
+      <input type="number" id="port" min="1024" max="65535">
+      <p class="hint" id="port_hint" data-t="portHint"></p>
+    </div>
+
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <aside class="side">
+    <section class="panel" aria-labelledby="preview-title">
+      <h2 id="preview-title" data-t="preview"></h2>
+      <div class="stage" id="stage">
+        <div class="stage-inner" id="stage_inner"><iframe id="frame" src="/?preview" title="preview"></iframe></div>
+      </div>
+      <p class="hint" data-t="previewHint"></p>
+    </section>
+
+    <section class="panel" aria-labelledby="obs-title">
+      <h2 id="obs-title" data-t="obs"></h2>
+      <div class="url">
+        <input type="text" id="url" readonly aria-label="URL">
+        <button type="button" class="btn" id="copy" data-t="copy"></button>
+      </div>
+      <ol>
+        <li data-t="step1"></li>
+        <li data-t="step2"></li>
+        <li id="step3"></li>
+      </ol>
+    </section>
+  </aside>
+</main>
+
+<script>
+(function () {
+  var TEXT = {
+    pt: {
+      subtitle: "configurações", look: "Aparência", theme: "Tema", bg: "Fundo", text: "Texto", accent: "Destaque",
+      opacity: "Opacidade do fundo", width: "Largura do card", animation: "Animação",
+      upload: "Enviar arquivo…", animationHint: "GIF, WebP ou APNG. Você também pode colocar o arquivo na pasta assets/ ao lado do pinguplay.exe.",
+      defaultAnim: "Pinguim (padrão)", source: "Ler música de", anyPlayer: "Qualquer player",
+      sourceHint: "\"Qualquer player\" inclui YouTube e outros apps que aparecem no controle de mídia do Windows.",
+      port: "Porta", portHint: "Mudar a porta exige reiniciar o pinguplay.", portRestart: "Reinicie o pinguplay para usar a nova porta.",
+      preview: "Prévia", previewHint: "Sem música tocando, a prévia mostra uma música de exemplo.",
+      obs: "Adicionar no OBS", copy: "Copiar", copied: "Copiado!",
+      step1: "No OBS: Fontes → + → Navegador.", step2: "Cole a URL acima no campo URL.",
+      step3: "Largura {w} e altura 96. Marque \"Desligar fonte quando não estiver visível\" para economizar.",
+      saving: "Salvando…", saved: "Salvo ✓", error: "Erro ao salvar", uploading: "Enviando…",
+      badFile: "Arquivo inválido. Use GIF, WebP ou APNG.", tooBig: "Arquivo maior que 10 MB.",
+      themes: { pink: "Rosa", white: "Branco", light_gray: "Cinza claro", dark: "Escuro", lilac: "Lilás", mint: "Menta", custom: "Personalizado" }
+    },
+    en: {
+      subtitle: "settings", look: "Appearance", theme: "Theme", bg: "Background", text: "Text", accent: "Accent",
+      opacity: "Background opacity", width: "Card width", animation: "Animation",
+      upload: "Upload file…", animationHint: "GIF, WebP or APNG. You can also drop the file in the assets/ folder next to pinguplay.exe.",
+      defaultAnim: "Penguin (default)", source: "Read music from", anyPlayer: "Any player",
+      sourceHint: "\"Any player\" includes YouTube and other apps shown in the Windows media controls.",
+      port: "Port", portHint: "Changing the port requires restarting pinguplay.", portRestart: "Restart pinguplay to use the new port.",
+      preview: "Preview", previewHint: "With nothing playing, the preview shows a sample song.",
+      obs: "Add to OBS", copy: "Copy", copied: "Copied!",
+      step1: "In OBS: Sources → + → Browser.", step2: "Paste the URL above into the URL field.",
+      step3: "Width {w} and height 96. Tick \"Shutdown source when not visible\" to save resources.",
+      saving: "Saving…", saved: "Saved ✓", error: "Could not save", uploading: "Uploading…",
+      badFile: "Invalid file. Use GIF, WebP or APNG.", tooBig: "File is larger than 10 MB.",
+      themes: { pink: "Pink", white: "White", light_gray: "Light gray", dark: "Dark", lilac: "Lilac", mint: "Mint", custom: "Custom" }
+    }
+  };
+  var MIME_BY_EXT = { gif: "image/gif", webp: "image/webp", png: "image/png", apng: "image/apng" };
+  var MAX_UPLOAD = 10 * 1024 * 1024;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var cfg = null, presets = [], animations = [], saveTimer = 0;
+
+  function t(key) { return TEXT[cfg ? cfg.lang : "pt"][key]; }
+  function setStatus(key) { $("status").textContent = key ? t(key) : ""; }
+
+  function translate() {
+    document.documentElement.lang = cfg.lang;
+    document.querySelectorAll("[data-t]").forEach(function (el) { el.textContent = t(el.getAttribute("data-t")); });
+    $("step3").textContent = t("step3").replace("{w}", cfg.width + 16);
+  }
+
+  function pressed(groupId, value) {
+    $(groupId).querySelectorAll("button").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-value") === value));
+    });
+  }
+
+  function buildThemes() {
+    var box = $("themes");
+    box.textContent = "";
+    var all = presets.concat([{ id: "custom", bg: cfg.custom_bg, text: cfg.custom_text, accent: cfg.custom_accent }]);
+    all.forEach(function (p) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "swatch";
+      b.setAttribute("data-value", p.id);
+      b.style.setProperty("--sw-bg", p.bg);
+      b.style.setProperty("--sw-text", p.text);
+      b.style.setProperty("--sw-accent", p.accent);
+      b.textContent = t("themes")[p.id] || p.id;
+      b.onclick = function () { update({ theme: p.id }); };
+      box.appendChild(b);
+    });
+  }
+
+  function buildAnimations() {
+    var sel = $("animation");
+    sel.textContent = "";
+    [""].concat(animations).forEach(function (name) {
+      var o = document.createElement("option");
+      o.value = name;
+      o.textContent = name || t("defaultAnim");
+      sel.appendChild(o);
+    });
+    sel.value = cfg.animation;
+  }
+
+  function fitPreview() {
+    var w = cfg.width + 16, h = 96;
+    var frame = $("frame"), inner = $("stage_inner");
+    frame.style.width = w + "px";
+    frame.style.height = h + "px";
+    var scale = Math.min(1, $("stage").clientWidth / (w + 28));
+    inner.style.transform = "scale(" + scale + ")";
+    inner.style.height = (h * scale) + "px";
+  }
+
+  function render() {
+    translate();
+    buildThemes();
+    buildAnimations();
+    pressed("themes", cfg.theme);
+    pressed("source", cfg.source);
+    pressed("lang", cfg.lang);
+    $("custom").hidden = cfg.theme !== "custom";
+    ["custom_bg", "custom_text", "custom_accent"].forEach(function (k) { $(k).value = cfg[k]; });
+    $("bg_opacity").value = cfg.bg_opacity;
+    $("bg_opacity_out").textContent = cfg.bg_opacity + "%";
+    $("width").value = cfg.width;
+    $("width_out").textContent = cfg.width + "px";
+    $("port").value = cfg.port;
+    var restart = String(cfg.port) !== location.port;
+    $("port_hint").textContent = t(restart ? "portRestart" : "portHint");
+    $("port_hint").classList.toggle("warn", restart);
+    fitPreview();
+  }
+
+  function setView(view) {
+    cfg = view.config;
+    presets = view.presets;
+    animations = view.animations;
+    render();
+  }
+
+  function save() {
+    setStatus("saving");
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      fetch("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) })
+        .then(function (r) { if (!r.ok) throw r; return r.json(); })
+        .then(function (view) { setView(view); setStatus("saved"); })
+        .catch(function () { setStatus("error"); });
+    }, 250);
+  }
+
+  function update(patch) {
+    Object.keys(patch).forEach(function (k) { cfg[k] = patch[k]; });
+    render();
+    save();
+  }
+
+  function bindGroup(id, key) {
+    $(id).addEventListener("click", function (e) {
+      var v = e.target.closest("button") && e.target.closest("button").getAttribute("data-value");
+      if (v && v !== cfg[key]) { var p = {}; p[key] = v; update(p); }
+    });
+  }
+
+  bindGroup("lang", "lang");
+  bindGroup("source", "source");
+  ["custom_bg", "custom_text", "custom_accent"].forEach(function (k) {
+    $(k).addEventListener("input", function () { var p = {}; p[k] = this.value; update(p); });
+  });
+  $("bg_opacity").addEventListener("input", function () { update({ bg_opacity: Number(this.value) }); });
+  $("width").addEventListener("input", function () { update({ width: Number(this.value) }); });
+  $("animation").addEventListener("change", function () { update({ animation: this.value }); });
+  $("port").addEventListener("change", function () {
+    var p = Number(this.value);
+    if (p >= 1024 && p <= 65535) update({ port: p }); else render();
+  });
+
+  $("upload_btn").addEventListener("click", function () { $("upload").click(); });
+  $("upload").addEventListener("change", function () {
+    var file = this.files[0];
+    this.value = "";
+    if (!file) return;
+    if (file.size > MAX_UPLOAD) { setStatus("tooBig"); return; }
+    var ext = (file.name.split(".").pop() || "").toLowerCase();
+    var type = MIME_BY_EXT[ext] || file.type;
+    setStatus("uploading");
+    fetch("/api/animation?name=" + encodeURIComponent(file.name), { method: "POST", headers: { "Content-Type": type }, body: file })
+      .then(function (r) { if (!r.ok) throw r; return r.json(); })
+      .then(function (view) { setView(view); setStatus("saved"); })
+      .catch(function () { setStatus("badFile"); });
+  });
+
+  $("url").value = location.origin + "/";
+  $("copy").addEventListener("click", function () {
+    var done = function () { $("copy").textContent = t("copied"); setTimeout(function () { $("copy").textContent = t("copy"); }, 1500); };
+    if (navigator.clipboard) navigator.clipboard.writeText($("url").value).then(done);
+    else { $("url").select(); document.execCommand("copy"); done(); }
+  });
+  window.addEventListener("resize", function () { if (cfg) fitPreview(); });
+
+  fetch("/api/config").then(function (r) { return r.json(); }).then(setView);
+})();
+</script>
+</body>
+</html>
