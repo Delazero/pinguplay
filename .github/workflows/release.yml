@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check tag matches Cargo.toml version
+        run: |
+          $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          if ("v$version" -ne $env:GITHUB_REF_NAME) {
+            Write-Error "Tag $env:GITHUB_REF_NAME does not match Cargo.toml version $version"
+            exit 1
+          }
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Package
+        run: |
+          $dir = "dist/pinguplay"
+          New-Item -ItemType Directory -Force "$dir/assets" | Out-Null
+          Copy-Item target/release/pinguplay.exe, README.md, LICENSE $dir
+          Copy-Item web/fonts/OFL.txt "$dir/OFL-Nunito.txt"
+          # Pasta vazia some do zip: um arquivo de aviso garante que assets/ exista.
+          "Coloque aqui seus GIF/WebP/APNG. / Drop your GIF/WebP/APNG files here." |
+            Set-Content -Encoding utf8 "$dir/assets/LEIA-ME.txt"
+          Compress-Archive -Path $dir -DestinationPath "dist/pinguplay-$env:GITHUB_REF_NAME-windows-x64.zip"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME "dist/pinguplay-$env:GITHUB_REF_NAME-windows-x64.zip" `
+            --title "pinguplay $env:GITHUB_REF_NAME" --generate-notes
