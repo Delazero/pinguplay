@@ -18,6 +18,7 @@ use tokio_stream::{Stream, StreamExt, wrappers::WatchStream};
 use crate::{
     anim,
     config::Config,
+    layout::{self, CardLayout},
     state::AppState,
     theme::{self, Preset},
 };
@@ -102,12 +103,15 @@ async fn animation(State(state): State<Shared>) -> impl IntoResponse {
 #[derive(Serialize)]
 struct ConfigView {
     config: Config,
+    /// Layout resolvido: a página usa para a altura da prévia e da dica do OBS.
+    card: CardLayout,
     presets: &'static [Preset],
     animations: Vec<String>,
 }
 
 fn config_view(state: &AppState, config: Config) -> Json<ConfigView> {
     Json(ConfigView {
+        card: layout::resolve(&config),
         config,
         presets: theme::PRESETS,
         animations: anim::list(&state.assets_dir),
@@ -242,6 +246,25 @@ mod tests {
         assert_eq!(json["presets"].as_array().unwrap().len(), theme::PRESETS.len());
         assert_eq!(state.style.borrow().bg, "#d4f5e6");
         assert_eq!(Config::load(&dir.0.join("config.toml")).theme, "mint");
+    }
+
+    #[tokio::test]
+    async fn layout_change_reaches_widget_and_config_view() {
+        let (state, _dir) = setup("layout");
+        let config = Config { layout: crate::config::Layout::Minimal, ..Config::default() };
+        let response = router(state.clone())
+            .oneshot(
+                request("POST", "/api/config")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(serde_json::to_vec(&config).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let json = body_json(response).await;
+        assert_eq!(json["card"]["compact"], true);
+        assert_eq!(json["card"]["pause"], "dim");
+        assert!(state.style.borrow().card.compact);
     }
 
     #[test]

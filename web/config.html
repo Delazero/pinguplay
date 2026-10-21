@@ -84,6 +84,16 @@
   .range output { min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--muted); }
 
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pills button {
+    font: inherit; font-weight: 800; cursor: pointer;
+    padding: 8px 15px; border-radius: 999px;
+    border: 1px solid var(--line); background: transparent; color: var(--ink);
+  }
+  .pills button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+  .checks { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; }
+  .checks label { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .checks input { width: 16px; height: 16px; accent-color: var(--brand); }
   .seg button { font: inherit; font-weight: 800; border: 0; background: transparent; color: var(--ink); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
   .seg button[aria-pressed="true"] { background: var(--brand); color: var(--brand-ink); }
 
@@ -126,6 +136,22 @@
 
   <section class="panel" aria-labelledby="look-title">
     <h2 id="look-title" data-t="look"></h2>
+
+    <div class="field">
+      <span class="label" data-t="layout"></span>
+      <div class="pills" id="layout" role="group">
+        <button type="button" data-value="full" data-t="layoutFull"></button>
+        <button type="button" data-value="no_gif" data-t="layoutNoGif"></button>
+        <button type="button" data-value="minimal" data-t="layoutMinimal"></button>
+        <button type="button" data-value="custom" data-t="layoutCustom"></button>
+      </div>
+      <div class="checks" id="parts" hidden>
+        <label><input type="checkbox" id="show_animation"> <span data-t="partAnimation"></span></label>
+        <label><input type="checkbox" id="show_cover"> <span data-t="partCover"></span></label>
+        <label><input type="checkbox" id="show_artist"> <span data-t="partArtist"></span></label>
+        <label><input type="checkbox" id="show_progress"> <span data-t="partProgress"></span></label>
+      </div>
+    </div>
 
     <div class="field">
       <span class="label" data-t="theme"></span>
@@ -203,7 +229,10 @@
 (function () {
   var TEXT = {
     pt: {
-      subtitle: "configurações", look: "Aparência", theme: "Tema", bg: "Fundo", text: "Texto", accent: "Destaque",
+      subtitle: "configurações", look: "Aparência",
+      layout: "Layout", layoutFull: "Completo", layoutNoGif: "Sem GIF", layoutMinimal: "Minimalista", layoutCustom: "Personalizado",
+      partAnimation: "Animação", partCover: "Capa", partArtist: "Artista", partProgress: "Barra de progresso",
+      theme: "Tema", bg: "Fundo", text: "Texto", accent: "Destaque",
       opacity: "Opacidade do fundo", width: "Largura do card", animation: "Animação",
       upload: "Enviar arquivo…", animationHint: "GIF, WebP ou APNG. Você também pode colocar o arquivo na pasta assets/ ao lado do pinguplay.exe.",
       defaultAnim: "Pinguim (padrão)", source: "Ler música de", anyPlayer: "Qualquer player",
@@ -212,13 +241,16 @@
       preview: "Prévia", previewHint: "Sem música tocando, a prévia mostra uma música de exemplo.",
       obs: "Adicionar no OBS", copy: "Copiar", copied: "Copiado!",
       step1: "No OBS: Fontes → + → Navegador.", step2: "Cole a URL acima no campo URL.",
-      step3: "Largura {w} e altura 96. Marque \"Desligar fonte quando não estiver visível\" para economizar.",
+      step3: "Largura {w} e altura {h}. Marque \"Desligar fonte quando não estiver visível\" para economizar.",
       saving: "Salvando…", saved: "Salvo ✓", error: "Erro ao salvar", uploading: "Enviando…",
       badFile: "Arquivo inválido. Use GIF, WebP ou APNG.", tooBig: "Arquivo maior que 10 MB.",
       themes: { pink: "Rosa", white: "Branco", light_gray: "Cinza claro", dark: "Escuro", lilac: "Lilás", mint: "Menta", custom: "Personalizado" }
     },
     en: {
-      subtitle: "settings", look: "Appearance", theme: "Theme", bg: "Background", text: "Text", accent: "Accent",
+      subtitle: "settings", look: "Appearance",
+      layout: "Layout", layoutFull: "Full", layoutNoGif: "No GIF", layoutMinimal: "Minimal", layoutCustom: "Custom",
+      partAnimation: "Animation", partCover: "Cover", partArtist: "Artist", partProgress: "Progress bar",
+      theme: "Theme", bg: "Background", text: "Text", accent: "Accent",
       opacity: "Background opacity", width: "Card width", animation: "Animation",
       upload: "Upload file…", animationHint: "GIF, WebP or APNG. You can also drop the file in the assets/ folder next to pinguplay.exe.",
       defaultAnim: "Penguin (default)", source: "Read music from", anyPlayer: "Any player",
@@ -227,7 +259,7 @@
       preview: "Preview", previewHint: "With nothing playing, the preview shows a sample song.",
       obs: "Add to OBS", copy: "Copy", copied: "Copied!",
       step1: "In OBS: Sources → + → Browser.", step2: "Paste the URL above into the URL field.",
-      step3: "Width {w} and height 96. Tick \"Shutdown source when not visible\" to save resources.",
+      step3: "Width {w} and height {h}. Tick \"Shutdown source when not visible\" to save resources.",
       saving: "Saving…", saved: "Saved ✓", error: "Could not save", uploading: "Uploading…",
       badFile: "Invalid file. Use GIF, WebP or APNG.", tooBig: "File is larger than 10 MB.",
       themes: { pink: "Pink", white: "White", light_gray: "Light gray", dark: "Dark", lilac: "Lilac", mint: "Mint", custom: "Custom" }
@@ -237,7 +269,10 @@
   var MAX_UPLOAD = 10 * 1024 * 1024;
 
   var $ = function (id) { return document.getElementById(id); };
-  var cfg = null, presets = [], animations = [], saveTimer = 0, saveSeq = 0;
+  var PARTS = ["show_animation", "show_cover", "show_artist", "show_progress"];
+  // Altura do Browser Source: card (80 ou 48 no compacto) + 16 de respiro do widget.
+  var SOURCE_HEIGHT = { normal: 96, compact: 64 };
+  var cfg = null, card = null, presets = [], animations = [], saveTimer = 0, saveSeq = 0;
 
   function t(key) { return TEXT[cfg ? cfg.lang : "pt"][key]; }
   function setStatus(key) { $("status").textContent = key ? t(key) : ""; }
@@ -283,8 +318,12 @@
     sel.value = cfg.animation;
   }
 
+  function sourceHeight() {
+    return card && card.compact ? SOURCE_HEIGHT.compact : SOURCE_HEIGHT.normal;
+  }
+
   function fitPreview() {
-    var w = cfg.width + 16, h = 96;
+    var w = cfg.width + 16, h = sourceHeight();
     var frame = $("frame"), inner = $("stage_inner");
     frame.style.width = w + "px";
     frame.style.height = h + "px";
@@ -308,7 +347,10 @@
     custom.style.setProperty("--sw-text", cfg.custom_text);
     custom.style.setProperty("--sw-accent", cfg.custom_accent);
     $("animation").value = cfg.animation;
-    $("step3").textContent = t("step3").replace("{w}", cfg.width + 16);
+    $("step3").textContent = t("step3").replace("{w}", cfg.width + 16).replace("{h}", sourceHeight());
+    pressed("layout", cfg.layout);
+    $("parts").hidden = cfg.layout !== "custom";
+    PARTS.forEach(function (k) { $(k).checked = cfg[k]; });
     pressed("themes", cfg.theme);
     pressed("source", cfg.source);
     pressed("lang", cfg.lang);
@@ -327,6 +369,7 @@
 
   function setView(view) {
     cfg = view.config;
+    card = view.card;
     presets = view.presets;
     animations = view.animations;
     rebuild();
@@ -344,6 +387,7 @@
           if (seq !== saveSeq) return;
           var listChanged = view.animations.join("\n") !== animations.join("\n");
           cfg = view.config;
+          card = view.card;
           animations = view.animations;
           if (listChanged) buildAnimations();
           render();
@@ -368,6 +412,10 @@
 
   bindGroup("lang", "lang");
   bindGroup("source", "source");
+  bindGroup("layout", "layout");
+  PARTS.forEach(function (k) {
+    $(k).addEventListener("change", function () { var p = {}; p[k] = this.checked; update(p); });
+  });
   ["custom_bg", "custom_text", "custom_accent"].forEach(function (k) {
     $(k).addEventListener("input", function () { var p = {}; p[k] = this.value; update(p); });
   });

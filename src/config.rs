@@ -25,12 +25,29 @@ pub enum Source {
     Any,
 }
 
+/// Quais partes do card aparecem (ver `layout::resolve`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Layout {
+    #[default]
+    Full,
+    NoGif,
+    Minimal,
+    Custom,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
     pub lang: Lang,
     pub port: u16,
     pub source: Source,
+    pub layout: Layout,
+    /// Partes visíveis no layout personalizado.
+    pub show_animation: bool,
+    pub show_cover: bool,
+    pub show_artist: bool,
+    pub show_progress: bool,
     pub theme: String,
     pub custom_bg: String,
     pub custom_text: String,
@@ -44,14 +61,20 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
+        let preset = theme::preset(theme::DEFAULT_ID).expect("default theme exists");
         Self {
             lang: Lang::Pt,
             port: DEFAULT_PORT,
             source: Source::Spotify,
-            theme: theme::PRESETS[0].id.into(),
-            custom_bg: "#ffd6e7".into(),
-            custom_text: "#5a2a3f".into(),
-            custom_accent: "#ff6fa5".into(),
+            layout: Layout::Full,
+            show_animation: true,
+            show_cover: true,
+            show_artist: true,
+            show_progress: true,
+            theme: preset.id.into(),
+            custom_bg: preset.bg.into(),
+            custom_text: preset.text.into(),
+            custom_accent: preset.accent.into(),
             bg_opacity: 100,
             width: 420,
             animation: String::new(),
@@ -186,6 +209,31 @@ mod tests {
         config.save(&path).unwrap();
         assert_eq!(Config::load(&path), config);
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn new_installs_default_to_dark_theme_and_full_layout() {
+        let config = Config::default();
+        let dark = theme::preset("dark").unwrap();
+        assert_eq!(config.theme, "dark");
+        assert_eq!((config.custom_bg.as_str(), config.custom_text.as_str()), (dark.bg, dark.text));
+        assert_eq!(config.layout, Layout::Full);
+        assert!(config.show_animation && config.show_cover && config.show_artist && config.show_progress);
+    }
+
+    #[test]
+    fn existing_config_keeps_saved_theme_and_gets_full_layout() {
+        let config = Config::from_toml_lenient("theme = \"pink\"\nwidth = 400");
+        assert_eq!(config.theme, "pink");
+        assert_eq!(config.layout, Layout::Full);
+    }
+
+    #[test]
+    fn invalid_layout_falls_back_alone() {
+        let config = Config::from_toml_lenient("layout = \"sideways\"\nshow_cover = false\ntheme = \"mint\"");
+        assert_eq!(config.layout, Layout::Full);
+        assert!(!config.show_cover);
+        assert_eq!(config.theme, "mint");
     }
 
     #[test]

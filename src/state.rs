@@ -13,6 +13,7 @@ use tokio::sync::watch;
 use crate::{
     anim,
     config::{Config, Lang},
+    layout::{self, CardLayout},
     media::NowPlaying,
     theme,
 };
@@ -33,6 +34,7 @@ pub struct WidgetStyle {
     /// Revisão da animação em `/animation`; muda quando o arquivo é trocado.
     pub anim: u64,
     pub lang: Lang,
+    pub card: CardLayout,
 }
 
 pub struct AppState {
@@ -133,5 +135,6 @@ fn style_of(config: &Config, anim_rev: u64) -> WidgetStyle {
         bg_opacity: config.bg_opacity,
         anim: anim_rev,
         lang: config.lang,
+        card: layout::resolve(config),
     }
 }

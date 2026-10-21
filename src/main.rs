@@ -5,6 +5,7 @@ mod anim;
 mod autostart;
 mod config;
 mod i18n;
+mod layout;
 mod media;
 mod server;
 mod state;

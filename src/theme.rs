@@ -3,6 +3,8 @@ use serde::Serialize;
 use crate::config::Config;
 
 pub const CUSTOM: &str = "custom";
+/// Tema de instalações novas.
+pub const DEFAULT_ID: &str = "dark";
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Preset {
@@ -28,8 +30,12 @@ pub struct Colors {
     pub accent: String,
 }
 
+pub fn preset(id: &str) -> Option<&'static Preset> {
+    PRESETS.iter().find(|p| p.id == id)
+}
+
 pub fn is_known(id: &str) -> bool {
-    id == CUSTOM || PRESETS.iter().any(|p| p.id == id)
+    id == CUSTOM || preset(id).is_some()
 }
 
 /// Resolve as cores finais do widget a partir do tema escolhido.
@@ -41,10 +47,9 @@ pub fn resolve(config: &Config) -> Colors {
             accent: config.custom_accent.clone(),
         };
     }
-    let preset = PRESETS
-        .iter()
-        .find(|p| p.id == config.theme)
-        .unwrap_or(&PRESETS[0]);
+    let preset = preset(&config.theme)
+        .or_else(|| preset(DEFAULT_ID))
+        .expect("default theme exists");
     Colors {
         bg: preset.bg.into(),
         text: preset.text.into(),
@@ -78,9 +83,9 @@ mod tests {
     }
 
     #[test]
-    fn unknown_theme_falls_back_to_pink() {
+    fn unknown_theme_falls_back_to_default() {
         let config = Config { theme: "nope".into(), ..Config::default() };
-        assert_eq!(resolve(&config).bg, PRESETS[0].bg);
+        assert_eq!(resolve(&config).bg, preset(DEFAULT_ID).unwrap().bg);
     }
 
     #[test]

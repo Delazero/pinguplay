@@ -77,6 +77,30 @@
   #fill { height: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); }
 
   #card.ad #cover, #card.ad .artist-line, #card.ad .bar { display: none; }
+
+  /* Layouts: partes escondidas */
+  #card.no-anim .anim, #card.no-cover #cover, #card.no-artist .artist-line, #card.no-bar .bar { display: none; }
+  #card.no-anim { padding-left: 14px; }
+
+  /* Compacto (sem imagem): pílula baixa, título e artista numa linha só */
+  #card.compact { height: 48px; padding: 0 22px; border-radius: 24px; }
+  #card.compact .artist-line { display: none; }
+  #card.compact #title { font-size: 16px; }
+  #card.compact .bar { height: 3px; margin-top: 4px; }
+
+  /* Pausa sem pinguim: ícone sobre a capa ou card translúcido */
+  #cover { position: relative; }
+  #card.pause-icon.paused #cover::after {
+    content: "\275A\275A";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(0, 0, 0, .45);
+    color: #fff;
+    font-size: 15px;
+    letter-spacing: 2px;
+  }
+  #card.visible.pause-dim.paused { opacity: .6; }
 </style>
 </head>
 <body>
@@ -102,6 +126,7 @@
     en: { ad: "Break ♪", demoTitle: "A pretty long song name to test scrolling", demoArtist: "Artist" }
   };
   var lang = "pt", animRev = 0, textKey = null, coverId = -1, swapTimer = 0;
+  var layout = { animation: true, cover: true, artist: true, progress: true, compact: false, pause: "freeze" };
   var lastNow = { kind: "hidden" };
 
   function rgb(hex) {
@@ -119,6 +144,14 @@
     root.setProperty("--track", "rgba(" + rgb(s.text) + ",.15)");
     root.setProperty("--shadow", "0 4px 14px rgba(0,0,0," + (0.12 * a) + ")");
     lang = TEXT[s.lang] ? s.lang : "pt";
+    layout = s.card;
+    card.classList.toggle("no-anim", !layout.animation);
+    card.classList.toggle("no-cover", !layout.cover);
+    card.classList.toggle("no-artist", !layout.artist);
+    card.classList.toggle("no-bar", !layout.progress);
+    card.classList.toggle("compact", layout.compact);
+    card.classList.toggle("pause-icon", layout.pause === "icon");
+    card.classList.toggle("pause-dim", layout.pause === "dim");
     if (s.anim !== animRev) {
       animRev = s.anim;
       anim.src = "/animation?v=" + animRev;
@@ -184,12 +217,18 @@
     var isAd = now.kind === "ad";
     var title = isAd ? TEXT[lang].ad : now.title;
     var artist = isAd ? "" : now.artist;
+    if (layout.compact && layout.artist && artist) {
+      title = title + " · " + artist;
+      artist = "";
+    }
     var key = title + "\n" + artist;
     var wasVisible = card.classList.contains("visible");
+    var paused = !isAd && !now.playing;
 
     card.classList.add("visible");
     card.classList.toggle("ad", isAd);
-    card.classList.toggle("frozen", isAd || !now.playing);
+    card.classList.toggle("paused", paused);
+    card.classList.toggle("frozen", isAd || paused);
 
     if (key !== textKey) {
       var first = textKey === null || !wasVisible;
