@@ -26,7 +26,7 @@ Um card em formato de pílula que mostra a música tocando no Spotify, com um pi
 ### Como usar
 
 1. Baixe o zip da página de [Releases](../../releases) e extraia numa pasta.
-2. Abra o `pinguplay.exe`. Um ícone rosa aparece na bandeja do Windows.
+2. Abra o `pinguplay.exe`. Um ícone de disco cinza aparece na bandeja do Windows.
 3. Clique com o botão direito no ícone → **Abrir configurações**.
 4. No OBS: **Fontes → + → Navegador**, cole `http://localhost:7878/`. Largura = largura do card + 16; altura = 96 (ou 64 nos layouts sem imagem). A página de configurações mostra os valores certos.
 
@@ -90,7 +90,7 @@ A pill-shaped card that shows what's playing on Spotify, with an animated pengui
 ### Usage
 
 1. Download the zip from [Releases](../../releases) and extract it.
-2. Run `pinguplay.exe`. A pink icon shows up in the Windows tray.
+2. Run `pinguplay.exe`. A gray disc icon shows up in the Windows tray.
 3. Right-click the icon → **Open settings**.
 4. In OBS: **Sources → + → Browser**, paste `http://localhost:7878/`. Width = card width + 16; height = 96 (or 64 for image-less layouts). The settings page shows the exact values.
 

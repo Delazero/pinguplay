@@ -127,7 +127,7 @@ pub fn open_in_browser(url: &str) {
     }
 }
 
-/// Ícone gerado em código (disco rosa com furo, tipo vinil) para não depender de arquivo.
+/// Ícone gerado em código (disco cinza claro com furo, tipo vinil) para não depender de arquivo.
 fn icon() -> Icon {
     let size = ICON_SIZE as f32;
     let center = (size - 1.0) / 2.0;
@@ -138,11 +138,11 @@ fn icon() -> Icon {
             let pixel = if d > size / 2.0 - 0.5 {
                 [0, 0, 0, 0]
             } else if d > size / 2.0 - 3.0 {
-                [0xc9, 0x3b, 0x78, 0xff]
+                [0x71, 0x71, 0x7a, 0xff]
             } else if d > 4.0 {
-                [0xff, 0x6f, 0xa5, 0xff]
+                [0xe4, 0xe4, 0xe7, 0xff]
             } else {
-                [0xff, 0xf0, 0xf6, 0xff]
+                [0x18, 0x18, 0x1b, 0xff]
             };
             rgba.extend_from_slice(&pixel);
         }
