@@ -24,12 +24,13 @@
 
   #card {
     width: var(--w);
-    height: 80px;
+    /* Altura calculada no servidor (layout::card_height) conforme o tamanho do texto. */
+    height: var(--h, 80px);
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 8px 26px 8px 8px;
-    border-radius: 40px;
+    border-radius: 999px;
     background: var(--bg);
     color: var(--text);
     box-shadow: var(--shadow);
@@ -69,9 +70,9 @@
   .line.scroll span { animation: marquee var(--d, 10s) linear infinite; }
   @keyframes marquee { to { transform: translateX(-50%); } }
 
-  #title { font-size: 17px; font-weight: 800; line-height: 1.3; }
+  #title { font-size: calc(17px * var(--ts, 1)); font-weight: 800; line-height: 1.3; }
   .artist-line { opacity: .72; }
-  #artist { font-size: 14px; font-weight: 600; line-height: 1.3; }
+  #artist { font-size: calc(14px * var(--ts, 1)); font-weight: 600; line-height: 1.3; }
 
   .bar { height: 4px; margin-top: 6px; border-radius: 2px; background: var(--track); overflow: hidden; }
   #fill { height: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); }
@@ -83,9 +84,9 @@
   #card.no-anim { padding-left: 14px; }
 
   /* Compacto (sem imagem): pílula baixa, título e artista numa linha só */
-  #card.compact { height: 48px; padding: 0 22px; border-radius: 24px; }
+  #card.compact { padding: 0 22px; }
   #card.compact .artist-line { display: none; }
-  #card.compact #title { font-size: 16px; }
+  #card.compact #title { font-size: calc(16px * var(--ts, 1)); }
   #card.compact .bar { height: 3px; margin-top: 4px; }
 
   /* Pausa sem pinguim: ícone sobre a capa ou card translúcido */
@@ -137,6 +138,8 @@
   function applyStyle(s) {
     var a = s.bg_opacity / 100, root = document.documentElement.style;
     root.setProperty("--w", s.width + "px");
+    root.setProperty("--h", s.card.height + "px");
+    root.setProperty("--ts", s.card.text_scale / 100);
     root.setProperty("--bg", "rgba(" + rgb(s.bg) + "," + a + ")");
     root.setProperty("--bg-solid", s.bg);
     root.setProperty("--text", s.text);

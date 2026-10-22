@@ -98,7 +98,8 @@
   .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
   button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
 
-  .side { position: sticky; top: 16px; display: grid; gap: 16px; }
+  /* minmax(0, 1fr): a largura fixa do iframe da prévia não pode alargar a coluna em telas estreitas. */
+  .side { position: sticky; top: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .stage {
     border-radius: 16px; padding: 14px; overflow: hidden;
     background: repeating-conic-gradient(var(--check-a) 0 25%, var(--check-b) 0 50%) 0 0 / 20px 20px;
@@ -165,6 +166,11 @@
     </div>
 
     <div class="field">
+      <label class="label" for="text_scale" data-t="textScale"></label>
+      <div class="range"><input type="range" id="text_scale" min="80" max="160" step="5"><output id="text_scale_out"></output></div>
+    </div>
+
+    <div class="field">
       <label class="label" for="animation" data-t="animation"></label>
       <div class="row">
         <select id="animation"></select>
@@ -224,7 +230,7 @@
       layout: "Layout", layoutFull: "Completo", layoutNoGif: "Sem GIF", layoutMinimal: "Minimalista", layoutCustom: "Personalizado",
       partAnimation: "Animação", partCover: "Capa", partArtist: "Artista", partProgress: "Barra de progresso",
       theme: "Tema", bg: "Fundo", text: "Texto", accent: "Destaque",
-      opacity: "Opacidade do fundo", width: "Largura do card", animation: "Animação",
+      opacity: "Opacidade do fundo", width: "Largura do card", textScale: "Tamanho do texto", animation: "Animação",
       upload: "Enviar arquivo…", animationHint: "GIF, WebP ou APNG. Você também pode colocar o arquivo na pasta assets/ ao lado do pinguplay.exe.",
       defaultAnim: "Pinguim (padrão)", source: "Ler música de", anyPlayer: "Qualquer player",
       sourceHint: "\"Qualquer player\" inclui YouTube e outros apps que aparecem no controle de mídia do Windows.",
@@ -242,7 +248,7 @@
       layout: "Layout", layoutFull: "Full", layoutNoGif: "No GIF", layoutMinimal: "Minimal", layoutCustom: "Custom",
       partAnimation: "Animation", partCover: "Cover", partArtist: "Artist", partProgress: "Progress bar",
       theme: "Theme", bg: "Background", text: "Text", accent: "Accent",
-      opacity: "Background opacity", width: "Card width", animation: "Animation",
+      opacity: "Background opacity", width: "Card width", textScale: "Text size", animation: "Animation",
       upload: "Upload file…", animationHint: "GIF, WebP or APNG. You can also drop the file in the assets/ folder next to pinguplay.exe.",
       defaultAnim: "Penguin (default)", source: "Read music from", anyPlayer: "Any player",
       sourceHint: "\"Any player\" includes YouTube and other apps shown in the Windows media controls.",
@@ -261,9 +267,15 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var PARTS = ["show_animation", "show_cover", "show_artist", "show_progress"];
-  // Altura do Browser Source: card (80 ou 48 no compacto) + 16 de respiro do widget.
-  var SOURCE_HEIGHT = { normal: 96, compact: 64 };
-  var cfg = null, card = null, presets = [], animations = [], saveTimer = 0, saveSeq = 0;
+  var cfg = null, presets = [], animations = [], saveTimer = 0, saveSeq = 0;
+  // Tamanho do Browser Source vem do servidor (altura depende do layout e do texto).
+  // A margem em volta do card deixa a largura acompanhar o slider sem esperar o save.
+  var obsHeight = 96, obsMargin = 16;
+
+  function setObs(view) {
+    obsHeight = view.obs.height;
+    obsMargin = view.obs.width - view.config.width;
+  }
 
   function t(key) { return TEXT[cfg ? cfg.lang : "pt"][key]; }
   function setStatus(key) { $("status").textContent = key ? t(key) : ""; }
@@ -309,12 +321,8 @@
     sel.value = cfg.animation;
   }
 
-  function sourceHeight() {
-    return card && card.compact ? SOURCE_HEIGHT.compact : SOURCE_HEIGHT.normal;
-  }
-
   function fitPreview() {
-    var w = cfg.width + 16, h = sourceHeight();
+    var w = cfg.width + obsMargin, h = obsHeight;
     var frame = $("frame"), inner = $("stage_inner");
     frame.style.width = w + "px";
     frame.style.height = h + "px";
@@ -338,7 +346,7 @@
     custom.style.setProperty("--sw-text", cfg.custom_text);
     custom.style.setProperty("--sw-accent", cfg.custom_accent);
     $("animation").value = cfg.animation;
-    $("step3").textContent = t("step3").replace("{w}", cfg.width + 16).replace("{h}", sourceHeight());
+    $("step3").textContent = t("step3").replace("{w}", cfg.width + obsMargin).replace("{h}", obsHeight);
     pressed("layout", cfg.layout);
     $("parts").hidden = cfg.layout !== "custom";
     PARTS.forEach(function (k) { $(k).checked = cfg[k]; });
@@ -351,6 +359,8 @@
     $("bg_opacity_out").textContent = cfg.bg_opacity + "%";
     $("width").value = cfg.width;
     $("width_out").textContent = cfg.width + "px";
+    $("text_scale").value = cfg.text_scale;
+    $("text_scale_out").textContent = cfg.text_scale + "%";
     $("port").value = cfg.port;
     var restart = String(cfg.port) !== location.port;
     $("port_hint").textContent = t(restart ? "portRestart" : "portHint");
@@ -360,7 +370,7 @@
 
   function setView(view) {
     cfg = view.config;
-    card = view.card;
+    setObs(view);
     presets = view.presets;
     animations = view.animations;
     rebuild();
@@ -378,7 +388,7 @@
           if (seq !== saveSeq) return;
           var listChanged = view.animations.join("\n") !== animations.join("\n");
           cfg = view.config;
-          card = view.card;
+          setObs(view);
           animations = view.animations;
           if (listChanged) buildAnimations();
           render();
@@ -412,6 +422,7 @@
   });
   $("bg_opacity").addEventListener("input", function () { update({ bg_opacity: Number(this.value) }); });
   $("width").addEventListener("input", function () { update({ width: Number(this.value) }); });
+  $("text_scale").addEventListener("input", function () { update({ text_scale: Number(this.value) }); });
   $("animation").addEventListener("change", function () { update({ animation: this.value }); });
   $("port").addEventListener("change", function () {
     var p = Number(this.value);

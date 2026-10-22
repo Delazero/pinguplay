@@ -18,7 +18,7 @@ use tokio_stream::{Stream, StreamExt, wrappers::WatchStream};
 use crate::{
     anim,
     config::Config,
-    layout::{self, CardLayout},
+    layout::{self, CardLayout, ObsSize},
     state::AppState,
     theme::{self, Preset},
 };
@@ -103,15 +103,18 @@ async fn animation(State(state): State<Shared>) -> impl IntoResponse {
 #[derive(Serialize)]
 struct ConfigView {
     config: Config,
-    /// Layout resolvido: a página usa para a altura da prévia e da dica do OBS.
     card: CardLayout,
+    /// Tamanho do Browser Source: a página usa na prévia e na dica do OBS.
+    obs: ObsSize,
     presets: &'static [Preset],
     animations: Vec<String>,
 }
 
 fn config_view(state: &AppState, config: Config) -> Json<ConfigView> {
+    let card = layout::resolve(&config);
     Json(ConfigView {
-        card: layout::resolve(&config),
+        obs: layout::obs_size(&config, &card),
+        card,
         config,
         presets: theme::PRESETS,
         animations: anim::list(&state.assets_dir),
@@ -264,6 +267,7 @@ mod tests {
         let json = body_json(response).await;
         assert_eq!(json["card"]["compact"], true);
         assert_eq!(json["card"]["pause"], "dim");
+        assert_eq!(json["obs"]["height"], 64);
         assert!(state.style.borrow().card.compact);
     }
 

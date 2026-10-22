@@ -17,6 +17,7 @@ Um card em formato de pílula que mostra a música tocando no Spotify, com um pi
 - **Fácil de configurar**: página de configurações com prévia ao vivo. O OBS atualiza sozinho.
 - 4 layouts: **Completo**, **Sem GIF**, **Minimalista** e **Personalizado** (escolha pinguim, capa, artista e barra).
 - 6 temas (escuro por padrão, rosa, branco, cinza claro, lilás, menta) + cores personalizadas e opacidade do fundo.
+- Tamanho do texto ajustável (80–160%); o card cresce sozinho quando precisa.
 - Animação trocável (GIF, WebP ou APNG).
 
 ### Requisitos
@@ -102,6 +103,7 @@ A pill-shaped card that shows what's playing on Spotify, with an animated pengui
 - **Easy setup**: settings page with live preview. OBS updates by itself.
 - 4 layouts: **Full**, **No GIF**, **Minimal** and **Custom** (pick penguin, cover, artist and progress bar).
 - 6 themes (dark by default, pink, white, light gray, lilac, mint) + custom colors and background opacity.
+- Adjustable text size (80–160%); the card grows on its own when needed.
 - Swappable animation (GIF, WebP or APNG).
 
 ### Requirements

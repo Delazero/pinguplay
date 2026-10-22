@@ -7,6 +7,8 @@ use crate::{anim, theme};
 pub const DEFAULT_PORT: u16 = 7878;
 pub const MIN_WIDTH: u16 = 260;
 pub const MAX_WIDTH: u16 = 800;
+pub const MIN_TEXT_SCALE: u16 = 80;
+pub const MAX_TEXT_SCALE: u16 = 160;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -55,6 +57,8 @@ pub struct Config {
     /// Opacidade do fundo do card, 0–100.
     pub bg_opacity: u8,
     pub width: u16,
+    /// Tamanho do texto (título e artista) em %, 80–160.
+    pub text_scale: u16,
     /// Arquivo dentro de `assets/`. Vazio = pinguim padrão embutido.
     pub animation: String,
 }
@@ -77,6 +81,7 @@ impl Default for Config {
             custom_accent: preset.accent.into(),
             bg_opacity: 100,
             width: 420,
+            text_scale: 100,
             animation: String::new(),
         }
     }
@@ -105,6 +110,7 @@ impl Config {
         }
         self.bg_opacity = self.bg_opacity.min(100);
         self.width = self.width.clamp(MIN_WIDTH, MAX_WIDTH);
+        self.text_scale = self.text_scale.clamp(MIN_TEXT_SCALE, MAX_TEXT_SCALE);
         if !self.animation.is_empty() && !anim::is_safe_name(&self.animation) {
             self.animation.clear();
         }
@@ -226,6 +232,14 @@ mod tests {
         let config = Config::from_toml_lenient("theme = \"pink\"\nwidth = 400");
         assert_eq!(config.theme, "pink");
         assert_eq!(config.layout, Layout::Full);
+    }
+
+    #[test]
+    fn text_scale_defaults_to_100_and_is_clamped() {
+        assert_eq!(Config::default().text_scale, 100);
+        assert_eq!(Config::from_toml_lenient("width = 300").text_scale, 100);
+        assert_eq!(Config { text_scale: 10, ..Config::default() }.sanitized().text_scale, MIN_TEXT_SCALE);
+        assert_eq!(Config { text_scale: 999, ..Config::default() }.sanitized().text_scale, MAX_TEXT_SCALE);
     }
 
     #[test]
