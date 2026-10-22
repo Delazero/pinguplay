@@ -78,6 +78,8 @@ Sem pinguim e sem capa, o card vira uma pílula baixa com `Título · Artista` n
 
 Na página de configurações, use **Enviar arquivo…** ou coloque o arquivo na pasta `assets/` ao lado do `.exe` e escolha na lista. Formatos: GIF, WebP, APNG (até 10 MB).
 
+O pinguim padrão (`assets/penguin.gif`) é um emote de [thisGraci](https://www.twitch.tv/thisgraci), usado com permissão. Ele não está sob a licença MIT; veja [NOTICE](NOTICE). Se o arquivo não estiver na pasta, o card mostra ♪ no lugar.
+
 ### Configuração manual
 
 Tudo fica em `config.toml`, ao lado do `.exe`. Mudar `port` exige reiniciar o app.
@@ -88,7 +90,11 @@ Tudo fica em `config.toml`, ao lado do `.exe`. Mudar `port` exige reiniciar o ap
 cargo build --release
 ```
 
-O executável fica em `target/release/pinguplay.exe`.
+O executável fica em `target/release/pinguplay.exe`. Para ter o pinguim padrão, copie `assets/penguin.gif` para `target/release/assets/`.
+
+### Assinatura de código
+
+Veja [Code signing policy](#code-signing-policy) (em inglês).
 
 ---
 
@@ -164,6 +170,8 @@ With no penguin and no cover, the card becomes a short pill with `Title · Artis
 
 In settings, use **Upload file…**, or drop a file into the `assets/` folder next to the `.exe` and pick it from the list. Formats: GIF, WebP, APNG (up to 10 MB).
 
+The default penguin (`assets/penguin.gif`) is an emote by [thisGraci](https://www.twitch.tv/thisgraci), used with permission. It is not covered by the MIT License; see [NOTICE](NOTICE). If the file is missing, the card shows ♪ instead.
+
 ### Manual configuration
 
 Everything lives in `config.toml` next to the `.exe`. Changing `port` requires restarting the app.
@@ -174,8 +182,25 @@ Everything lives in `config.toml` next to the `.exe`. Changing `port` requires r
 cargo build --release
 ```
 
-The executable is at `target/release/pinguplay.exe`.
+The executable is at `target/release/pinguplay.exe`. For the default penguin, copy `assets/penguin.gif` to `target/release/assets/`.
 
 ---
 
-MIT License. Nunito font under SIL OFL 1.1.
+## Code signing policy
+
+Windows releases of pinguplay are built by the GitHub Actions workflow in this repository ([`.github/workflows/release.yml`](.github/workflows/release.yml)) from the tagged source code. Nothing is built or signed outside of that workflow.
+
+**Team roles**
+
+- Committers and reviewers: [Delazero](https://github.com/Delazero)
+- Approvers: [Delazero](https://github.com/Delazero)
+
+**Privacy policy**
+
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
+
+pinguplay only listens on `localhost` (127.0.0.1) to serve the widget and settings pages to OBS and your browser. It reads the current track from the Windows media controls and keeps everything on your computer. The only system change it makes is the optional **Start with Windows** entry (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`), which is added or removed only when you toggle it in the tray menu. To uninstall, untick **Start with Windows**, quit pinguplay and delete its folder.
+
+---
+
+MIT License (source code). Default penguin by [thisGraci](https://www.twitch.tv/thisgraci), used with permission. Nunito font under SIL OFL 1.1. See [NOTICE](NOTICE).

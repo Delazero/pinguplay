@@ -22,5 +22,6 @@ SOFTWARE.
 
 ---
 
-web/fonts/nunito.woff2 is the Nunito typeface, licensed under the SIL Open Font
-License 1.1 (see web/fonts/OFL.txt).
+This license covers the pinguplay source code only. assets/penguin.gif (used
+with the author's permission) and web/fonts/nunito.woff2 (SIL Open Font
+License 1.1) are under their own terms; see NOTICE.

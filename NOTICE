@@ -1,0 +1,15 @@
+pinguplay
+=========
+
+The pinguplay source code is licensed under the MIT License (see LICENSE).
+The following files are NOT covered by the MIT License:
+
+assets/penguin.gif
+  Penguin emote by thisGraci (https://www.twitch.tv/thisgraci).
+  Included and distributed with pinguplay with the author's permission.
+  It is not open source: do not reuse or redistribute it outside of
+  pinguplay without asking the author.
+
+web/fonts/nunito.woff2
+  Nunito typeface, Copyright 2014 The Nunito Project Authors.
+  Licensed under the SIL Open Font License 1.1 (see web/fonts/OFL.txt).

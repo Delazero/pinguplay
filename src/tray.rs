@@ -21,7 +21,7 @@ use windows::{
 };
 
 use crate::{
-    autostart,
+    autostart, icon,
     config::Lang,
     i18n::{Text, text},
     state::AppState,
@@ -127,25 +127,7 @@ pub fn open_in_browser(url: &str) {
     }
 }
 
-/// Ícone gerado em código (disco cinza claro com furo, tipo vinil) para não depender de arquivo.
+/// Mesmo desenho do ícone do .exe, gerado em código para não depender de arquivo.
 fn icon() -> Icon {
-    let size = ICON_SIZE as f32;
-    let center = (size - 1.0) / 2.0;
-    let mut rgba = Vec::with_capacity((ICON_SIZE * ICON_SIZE * 4) as usize);
-    for y in 0..ICON_SIZE {
-        for x in 0..ICON_SIZE {
-            let d = ((x as f32 - center).powi(2) + (y as f32 - center).powi(2)).sqrt();
-            let pixel = if d > size / 2.0 - 0.5 {
-                [0, 0, 0, 0]
-            } else if d > size / 2.0 - 3.0 {
-                [0x71, 0x71, 0x7a, 0xff]
-            } else if d > 4.0 {
-                [0xe4, 0xe4, 0xe7, 0xff]
-            } else {
-                [0x18, 0x18, 0x1b, 0xff]
-            };
-            rgba.extend_from_slice(&pixel);
-        }
-    }
-    Icon::from_rgba(rgba, ICON_SIZE, ICON_SIZE).expect("valid icon")
+    Icon::from_rgba(icon::disc_rgba(ICON_SIZE), ICON_SIZE, ICON_SIZE).expect("valid icon")
 }

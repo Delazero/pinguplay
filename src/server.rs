@@ -51,7 +51,7 @@ pub async fn serve(listener: std::net::TcpListener, state: Shared) -> std::io::R
     axum::serve(listener, router(state)).await
 }
 
-/// Bloqueia DNS rebinding: só aceita requests endereçados ao próprio localhost.
+/// Bloqueia DNS rebinding: sÃ³ aceita requests endereÃ§ados ao prÃ³prio localhost.
 async fn local_only(State(state): State<Shared>, request: Request, next: Next) -> Response {
     let host = request.headers().get(header::HOST).and_then(|h| h.to_str().ok());
     if host.is_some_and(|h| is_local_host(h, state.port)) {
@@ -95,16 +95,18 @@ async fn cover(State(state): State<Shared>) -> Response {
     }
 }
 
-async fn animation(State(state): State<Shared>) -> impl IntoResponse {
-    let (bytes, mime) = state.animation();
-    ([(header::CONTENT_TYPE, mime), (header::CACHE_CONTROL, "no-cache")], bytes)
+async fn animation(State(state): State<Shared>) -> Response {
+    match state.animation() {
+        Some((bytes, mime)) => ([(header::CONTENT_TYPE, mime), (header::CACHE_CONTROL, "no-cache")], bytes).into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
 }
 
 #[derive(Serialize)]
 struct ConfigView {
     config: Config,
     card: CardLayout,
-    /// Tamanho do Browser Source: a página usa na prévia e na dica do OBS.
+    /// Tamanho do Browser Source: a pÃ¡gina usa na prÃ©via e na dica do OBS.
     obs: ObsSize,
     presets: &'static [Preset],
     animations: Vec<String>,
@@ -143,7 +145,7 @@ async fn upload_animation(
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    // Exigir um Content-Type de imagem força preflight CORS: outros sites não conseguem enviar.
+    // Exigir um Content-Type de imagem forÃ§a preflight CORS: outros sites nÃ£o conseguem enviar.
     let declared = headers
         .get(header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
@@ -221,13 +223,35 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn serves_widget_and_default_animation() {
-        let (state, _dir) = setup("pages");
+    async fn serves_widget_and_default_penguin_from_assets() {
+        let (state, dir) = setup("pages");
+        fs::write(dir.0.join("assets").join(anim::DEFAULT_FILE), anim::TEST_GIF).unwrap();
         let app = router(state);
         let widget = app.clone().oneshot(request("GET", "/").body(Body::empty()).unwrap()).await.unwrap();
         assert_eq!(widget.status(), StatusCode::OK);
         let anim = app.oneshot(request("GET", "/animation").body(Body::empty()).unwrap()).await.unwrap();
         assert_eq!(anim.headers()[header::CONTENT_TYPE], "image/gif");
+    }
+
+    #[tokio::test]
+    async fn missing_animation_file_is_not_found() {
+        let (state, _dir) = setup("noanim");
+        let response = router(state)
+            .oneshot(request("GET", "/animation").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn missing_custom_animation_falls_back_to_default_penguin() {
+        let (state, dir) = setup("fallback");
+        let assets = dir.0.join("assets");
+        fs::write(assets.join("mine.gif"), anim::TEST_GIF).unwrap();
+        fs::write(assets.join(anim::DEFAULT_FILE), anim::TEST_GIF).unwrap();
+        state.apply_config(Config { animation: "mine.gif".into(), ..Config::default() }).unwrap();
+        fs::remove_file(assets.join("mine.gif")).unwrap();
+        assert_eq!(state.animation().map(|(_, mime)| mime), Some("image/gif"));
     }
 
     #[tokio::test]
@@ -301,7 +325,7 @@ mod tests {
             .oneshot(
                 request("POST", "/api/animation?name=Dance.gif")
                     .header(header::CONTENT_TYPE, "image/gif")
-                    .body(Body::from(anim::DEFAULT_GIF))
+                    .body(Body::from(anim::TEST_GIF))
                     .unwrap(),
             )
             .await
@@ -333,7 +357,7 @@ mod tests {
             .oneshot(
                 request("POST", "/api/animation?name=x.gif")
                     .header(header::CONTENT_TYPE, "text/plain")
-                    .body(Body::from(anim::DEFAULT_GIF))
+                    .body(Body::from(anim::TEST_GIF))
                     .unwrap(),
             )
             .await

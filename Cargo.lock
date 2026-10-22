@@ -911,7 +911,7 @@ checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
 name = "pinguplay"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "axum",
  "clipboard-win",
@@ -925,6 +925,7 @@ dependencies = [
  "tray-icon",
  "windows",
  "winreg",
+ "winresource",
 ]
 
 [[package]]
@@ -1618,6 +1619,16 @@ checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
 dependencies = [
  "cfg-if",
  "windows-sys",
+]
+
+[[package]]
+name = "winresource"
+version = "0.1.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2bc6d36480b829272a5bdabf08e6dca8004761c1da7e35efef800540c66221b"
+dependencies = [
+ "toml 1.1.8+spec-1.1.0",
+ "version_check",
 ]
 
 [[package]]

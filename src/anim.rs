@@ -2,7 +2,12 @@
 
 use std::{fs, path::Path};
 
-pub const DEFAULT_GIF: &[u8] = include_bytes!("../assets/penguin.gif");
+/// Animação padrão, distribuída ao lado do exe em `assets/` (não vai embutida:
+/// o GIF é de terceiros, usado com permissão, fora da licença MIT; ver NOTICE).
+pub const DEFAULT_FILE: &str = "penguin.gif";
+
+#[cfg(test)]
+pub const TEST_GIF: &[u8] = include_bytes!("../assets/penguin.gif");
 pub const MAX_UPLOAD_BYTES: usize = 10 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,7 +94,12 @@ pub fn safe_file_name(original: &str, format: Format) -> String {
     if is_reserved(&clean) {
         clean.insert(0, '_');
     }
-    format!("{clean}.{}", format.ext())
+    let name = format!("{clean}.{}", format.ext());
+    // Upload com o nome do pinguim padrão não pode sobrescrevê-lo.
+    if name.eq_ignore_ascii_case(DEFAULT_FILE) {
+        return format!("{clean}_custom.{}", format.ext());
+    }
+    name
 }
 
 /// Nomes de dispositivo do Windows (CON, NUL, COM1…) não podem virar arquivo.
@@ -105,7 +115,8 @@ pub fn format_of_name(name: &str) -> Option<Format> {
     name.rsplit_once('.').and_then(|(_, ext)| Format::from_ext(ext))
 }
 
-/// Animações disponíveis na pasta `assets/`, em ordem alfabética.
+/// Animações enviadas pelo usuário em `assets/`, em ordem alfabética
+/// (o pinguim padrão fica de fora: a página já o mostra como "padrão").
 pub fn list(dir: &Path) -> Vec<String> {
     let Ok(entries) = fs::read_dir(dir) else {
         return Vec::new();
@@ -114,7 +125,7 @@ pub fn list(dir: &Path) -> Vec<String> {
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_ok_and(|t| t.is_file()))
         .filter_map(|e| e.file_name().into_string().ok())
-        .filter(|name| is_safe_name(name))
+        .filter(|name| is_safe_name(name) && !name.eq_ignore_ascii_case(DEFAULT_FILE))
         .collect();
     names.sort_by_key(|n| n.to_lowercase());
     names
@@ -135,8 +146,25 @@ mod tests {
     }
 
     #[test]
-    fn default_penguin_is_a_gif() {
-        assert_eq!(sniff(DEFAULT_GIF), Some(Format::Gif));
+    fn shipped_penguin_is_a_gif() {
+        assert_eq!(sniff(TEST_GIF), Some(Format::Gif));
+    }
+
+    #[test]
+    fn uploads_never_overwrite_the_default_penguin() {
+        assert_eq!(safe_file_name(DEFAULT_FILE, Format::Gif), "penguin_custom.gif");
+        assert_eq!(safe_file_name("Penguin.GIF", Format::Gif), "Penguin_custom.gif");
+        assert_eq!(safe_file_name("penguin.webp", Format::Webp), "penguin.webp");
+    }
+
+    #[test]
+    fn default_penguin_is_not_listed_as_custom_animation() {
+        let dir = std::env::temp_dir().join(format!("pinguplay-default-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join(DEFAULT_FILE), b"x").unwrap();
+        fs::write(dir.join("mine.gif"), b"x").unwrap();
+        assert_eq!(list(&dir), vec!["mine.gif"]);
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

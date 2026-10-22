@@ -108,15 +108,18 @@ impl AppState {
         self.apply_config(Config { animation: name, ..self.config() })
     }
 
-    /// Bytes e tipo da animação atual; cai no pinguim embutido se o arquivo sumir.
-    pub fn animation(&self) -> (Vec<u8>, &'static str) {
-        let name = self.config().animation;
-        if let Some(format) = anim::format_of_name(&name)
-            && let Ok(bytes) = fs::read(self.assets_dir.join(&name))
-        {
-            return (bytes, format.mime());
-        }
-        (anim::DEFAULT_GIF.to_vec(), anim::Format::Gif.mime())
+    /// Bytes e tipo da animação atual: a escolhida, senão o pinguim padrão de `assets/`.
+    /// `None` se nenhum arquivo existir (o widget mostra ♪ no lugar).
+    pub fn animation(&self) -> Option<(Vec<u8>, &'static str)> {
+        let chosen = self.config().animation;
+        [chosen.as_str(), anim::DEFAULT_FILE]
+            .into_iter()
+            .filter(|name| !name.is_empty())
+            .find_map(|name| {
+                let format = anim::format_of_name(name)?;
+                let bytes = fs::read(self.assets_dir.join(name)).ok()?;
+                Some((bytes, format.mime()))
+            })
     }
 
     fn publish_style(&self) {

@@ -79,6 +79,10 @@
 
   #card.ad #cover, #card.ad .artist-line, #card.ad .bar { display: none; }
 
+  /* Sem arquivo de animação (assets/penguin.gif ausente): ♪ no lugar do pinguim. */
+  #card.anim-missing #anim, #card.anim-missing #still { display: none; }
+  #card.anim-missing .anim::after { content: "\266A"; font-size: 30px; color: var(--accent); }
+
   /* Layouts: partes escondidas */
   #card.no-anim .anim, #card.no-cover #cover, #card.no-artist .artist-line, #card.no-bar .bar { display: none; }
   #card.no-anim { padding-left: 14px; }
@@ -164,7 +168,9 @@
   }
 
   // Guarda o primeiro frame num canvas para "congelar" o GIF quando pausa.
+  anim.onerror = function () { card.classList.add("anim-missing"); };
   anim.onload = function () {
+    card.classList.remove("anim-missing");
     still.width = anim.naturalWidth;
     still.height = anim.naturalHeight;
     still.getContext("2d").drawImage(anim, 0, 0);

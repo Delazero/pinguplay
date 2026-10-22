@@ -38,9 +38,10 @@ jobs:
         run: |
           $dir = "dist/pinguplay"
           New-Item -ItemType Directory -Force "$dir/assets" | Out-Null
-          Copy-Item target/release/pinguplay.exe, README.md, LICENSE $dir
+          Copy-Item target/release/pinguplay.exe, README.md, LICENSE, NOTICE $dir
           Copy-Item web/fonts/OFL.txt "$dir/OFL-Nunito.txt"
-          # Pasta vazia some do zip: um arquivo de aviso garante que assets/ exista.
+          # O pinguim padrão vai como arquivo separado, fora do exe (ver NOTICE).
+          Copy-Item assets/penguin.gif "$dir/assets/"
           "Coloque aqui seus GIF/WebP/APNG. / Drop your GIF/WebP/APNG files here." |
             Set-Content -Encoding utf8 "$dir/assets/LEIA-ME.txt"
           Compress-Archive -Path $dir -DestinationPath "dist/pinguplay-$env:GITHUB_REF_NAME-windows-x64.zip"
